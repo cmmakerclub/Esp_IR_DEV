@@ -1,20 +1,31 @@
+#include <Arduino.h>
+#include <MqttConnector.h>
+#include <ESP8266WiFi.h>
+#include <ArduinoJson.h>
+#include <MQTT_OTA.hpp>
 #include <EEPROM.h>
+#include "DHT.h"
 
 #define IR_commanf_time 500000
-#define DHTTYPE       DHT22
-#define DHT_pin       13
+
 #define oled_sck_pin  4
 #define oled_sda_pin  5
 #define IR_rx_pin     14
 #define IR_tx_pin     12
 #define User_pin      0
 
+#define DHTPIN 13     // what digital pin we're connected to
+// Uncomment whatever type you're using!
+//#define DHTTYPE DHT11   // DHT 11
+#define DHTTYPE DHT22   // DHT 22  (AM2302), AM2321
+DHT dht(DHTPIN, DHTTYPE);
+
 uint16_t pointer_x = 0;
 typedef struct {
   float ir_freq = 0;
   float data_period = 0;
   uint32_t data[32] = {0};
-} protocol_pattern; 
+} protocol_pattern;
 
 protocol_pattern tmp;
 
@@ -69,29 +80,62 @@ void eep_ir_load(int16_t command_NO) {
 }
 
 
-void setup() {
-  delay(100);
+MqttConnector *mqtt;
 
+#define MQTT_HOST         "mqtt.espert.io"
+#define MQTT_PORT         1883
+#define MQTT_USERNAME     ""
+#define MQTT_PASSWORD     ""
+#define MQTT_CLIENT_ID    ""
+#define MQTT_PREFIX       "/CMMC"
+#define PUBLISH_EVERY     (2000)// every 2 seconds
+
+/* DEVICE DATA & FREQUENCY */
+#define DEVICE_NAME       "ESP_REMOTE_001"
+
+/* WIFI INFO */
+#ifndef WIFI_SSID
+  #define WIFI_SSID        "DEVICES-AP"
+  #define WIFI_PASSWORD    "devicenetwork"
+#endif
+
+#include "_publish.h"
+#include "_receive.h"
+#include "init_mqtt.h"
+
+void init_hardware()
+{
   pinMode(IR_rx_pin, INPUT_PULLUP);
   pinMode(IR_tx_pin, OUTPUT);
   pinMode(User_pin, INPUT_PULLUP);
+  dht.begin();
+  pinMode(DHTPIN, INPUT_PULLUP);
 
-  delay(100);
   Serial.begin(115200);
   Serial.println("");
   Serial.println("Start");
-
+  delay(10);
+  Serial.println();
+  Serial.println("Serial port initialized.");
 }
 
-void loop() {
+void setup()
+{
+  init_hardware();
 
-  eep_ir_load(0);  // turn off 
-  IR_transmit();
-  delay(5000);
-  
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  while(WiFi.status() != WL_CONNECTED) {
+    Serial.printf ("Connecting to %s:%s\r\n", WIFI_SSID, WIFI_PASSWORD);
+    delay(300);
+  }
 
-  eep_ir_load(1);  // turn on
-  IR_transmit();
-  delay(5000);
+  Serial.println("WiFi Connected.");
 
+  delay(200);
+  init_mqtt();
+}
+
+void loop()
+{
+  mqtt->loop();
 }
