@@ -1,4 +1,4 @@
-#include EEPROM.h
+#include <EEPROM.h>
 
 #define IR_commanf_time 500000
 #define DHTTYPE       DHT22
@@ -36,18 +36,18 @@ void IR_transmit(void) {
       timer1_isr_init();
       timer1_attachInterrupt(dataIROut);
       timer1_enable(TIM_DIV1, TIM_EDGE, TIM_LOOP);
-      timer1_write((float)clockCyclesPerMicrosecond()   (1000000.0f  tmp.ir_freq)  0.5f);
+      timer1_write((float)clockCyclesPerMicrosecond()  * (1000000.0f / tmp.ir_freq) * 0.5f);
       uint32_t rec_time1 = micros();
       uint32_t rec_time_back = rec_time1;
       float rec_time2 = 0;
       float rec_time3 = 0;
       uint32_t pointer_x = 0;
       uint8_t toggle = 1;
-      while (pointer_x    32  32) {
+      while (pointer_x <   32 * 32) {
         rec_time1 = micros() - rec_time_back;
-        if (rec_time1 - rec_time3 = tmp.data_period  2.0f) {
-          rec_time3 += tmp.data_period  2.0f;
-          if (tmp.data[pointer_x  32] & bit_data  (pointer_x % 32)) {
+        if (rec_time1 - rec_time3 >= tmp.data_period / 2.0f) {
+          rec_time3 += tmp.data_period / 2.0f;
+          if (tmp.data[pointer_x / 32] & bit_data >> (pointer_x % 32)) {
             data_bit = 1;
           } else {
             data_bit = 0;
@@ -63,7 +63,7 @@ void eep_ir_load(int16_t command_NO) {
   int size_data = sizeof(protocol_pattern);
   uint8_t buffer_data[sizeof(protocol_pattern)] = {0};
   EEPROM.begin(512);
-  for (int x = 0; x  size_data; x++)  buffer_data[x] = EEPROM.read(1 + (size_data  command_NO) + x);
+  for (int x = 0; x < size_data; x++)  buffer_data[x] = EEPROM.read(1 + (size_data * command_NO) + x);
   EEPROM.end();
   memcpy(&tmp, buffer_data, size_data);
 }
@@ -78,19 +78,19 @@ void setup() {
 
   delay(100);
   Serial.begin(115200);
-  Serial.println();
-  Serial.println(Start);
+  Serial.println("");
+  Serial.println("Start");
 
 }
 
 void loop() {
 
-  eep_ir_load(0);   turn off 
+  eep_ir_load(0);  // turn off 
   IR_transmit();
   delay(5000);
   
 
-  eep_ir_load(1);   turn on
+  eep_ir_load(1);  // turn on
   IR_transmit();
   delay(5000);
 
